@@ -9,7 +9,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-#[Fillable(['payer_id', 'amount_cents', 'category', 'spent_on', 'comment', 'receipt_path', 'split_type'])]
+#[Fillable(['payer_id', 'created_by_id', 'amount_cents', 'category', 'spent_on', 'comment', 'receipt_path', 'split_type'])]
 class Expense extends Model
 {
     use HasFactory, SoftDeletes;
