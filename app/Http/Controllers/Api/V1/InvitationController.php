@@ -27,7 +27,7 @@ class InvitationController extends Controller
             'token' => Str::random(48),
             'expires_at' => now()->addDays($data['expires_in_days'] ?? 7),
         ]);
-        $acceptUrl = url('/api/v1/invitations/'.$invitation->token.'/accept');
+        $acceptUrl = rtrim((string) config('app.frontend_url'), '/').'/invitations/'.$invitation->token;
 
         if ($invitation->email !== null) {
             Mail::raw("You have been invited to join {$group->name}. Accept: {$acceptUrl}", function ($message) use ($invitation): void {
