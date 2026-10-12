@@ -1,0 +1,61 @@
+<?php
+
+namespace App\Http\Controllers\Api\V1;
+
+use App\Http\Controllers\Controller;
+use App\Models\Activity;
+use App\Models\Group;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
+
+class GroupController extends Controller
+{
+    public function index(Request $request): JsonResponse
+    {
+        return response()->json($request->user()->groupMemberships()->with('group')->get()->pluck('group'));
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'currency' => ['required', 'string', 'size:3'], 'reminder_after_days' => ['nullable', 'integer', 'min:1', 'max:365']]);
+        $group = DB::transaction(function () use ($data, $request): Group {
+            $group = Group::create($data + ['owner_id' => $request->user()->id, 'invite_token' => Str::random(48)]);
+            $group->members()->create(['user_id' => $request->user()->id]);
+            Activity::create(['group_id' => $group->id, 'actor_id' => $request->user()->id, 'type' => 'group.created']);
+
+            return $group;
+        });
+
+        return response()->json($group, 201);
+    }
+
+    public function show(Request $request, Group $group): JsonResponse
+    {
+        $this->member($request, $group);
+
+        return response()->json($group->load('members.user:id,name,email'));
+    }
+
+    public function close(Request $request, Group $group): JsonResponse
+    {
+        abort_unless($group->owner_id === $request->user()->id, 403);
+        $group->update(['closed_at' => now()]);
+
+        return response()->json($group);
+    }
+
+    public function reopen(Request $request, Group $group): JsonResponse
+    {
+        abort_unless($group->owner_id === $request->user()->id, 403);
+        $group->update(['closed_at' => null]);
+
+        return response()->json($group);
+    }
+
+    private function member(Request $request, Group $group): void
+    {
+        abort_unless($group->members()->where('user_id', $request->user()->id)->exists(), 404);
+    }
+}
