@@ -108,6 +108,25 @@
                 }
             }
         },
+        "/logout": {
+            "post": {
+                "tags": [
+                    "Authentication"
+                ],
+                "summary": "Отозвать текущий токен",
+                "operationId": "8b40cf117c883f2e5ac302e0c4c7a668",
+                "responses": {
+                    "204": {
+                        "description": "Выход выполнен"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/groups": {
             "get": {
                 "tags": [
@@ -128,9 +147,299 @@
                         "sanctum": []
                     }
                 ]
+            },
+            "post": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "Создать группу",
+                "operationId": "8a73f036129d2ab2c0c4731e4d454d99",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "name",
+                                    "currency"
+                                ],
+                                "properties": {
+                                    "name": {
+                                        "type": "string"
+                                    },
+                                    "currency": {
+                                        "type": "string",
+                                        "example": "RUB"
+                                    },
+                                    "reminder_after_days": {
+                                        "type": "integer",
+                                        "example": 7
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Группа создана"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/groups/{group}": {
+            "get": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "Получить группу и участников",
+                "operationId": "9d24ff74299a69a8d7ecac929d6384bb",
+                "parameters": [
+                    {
+                        "name": "group",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Группа"
+                    },
+                    "404": {
+                        "description": "Группа недоступна"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/groups/{group}/close": {
+            "post": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "Закрыть группу",
+                "operationId": "71316062d74e028278dae4d84700535a",
+                "parameters": [
+                    {
+                        "name": "group",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Группа закрыта"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/groups/{group}/reopen": {
+            "post": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "Открыть закрытую группу",
+                "operationId": "d4eb0a48f1afc46a45e3bdf93e519a63",
+                "parameters": [
+                    {
+                        "name": "group",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Группа открыта"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/groups/{group}/invitations": {
+            "post": {
+                "tags": [
+                    "Invitations"
+                ],
+                "summary": "Создать приглашение по ссылке или email",
+                "operationId": "5c1cedfa0f8243345115e266660db59b",
+                "parameters": [
+                    {
+                        "name": "group",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email",
+                                        "nullable": true
+                                    },
+                                    "expires_in_days": {
+                                        "type": "integer",
+                                        "example": 7
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Возвращает accept_url; если указан email, приглашение отправлено письмом"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/invitations/{token}/accept": {
+            "post": {
+                "tags": [
+                    "Invitations"
+                ],
+                "summary": "Принять приглашение",
+                "operationId": "655ae15f532f3a48cfb8fffabcdb814e",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Участник добавлен"
+                    },
+                    "410": {
+                        "description": "Приглашение истекло или использовано"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/groups/{group}/balances": {
+            "get": {
+                "tags": [
+                    "Balances"
+                ],
+                "summary": "Балансы и минимальные переводы группы",
+                "operationId": "2190b6bb00c06bebb7bd8768e9a6bbb7",
+                "parameters": [
+                    {
+                        "name": "group",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Балансы"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/balances": {
+            "get": {
+                "tags": [
+                    "Balances"
+                ],
+                "summary": "Балансы по всем группам",
+                "operationId": "ef8ca0eaf64a8ade3625eb8d1d9be7b8",
+                "responses": {
+                    "200": {
+                        "description": "Балансы"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
             }
         },
         "/groups/{group}/expenses": {
+            "get": {
+                "tags": [
+                    "Expenses"
+                ],
+                "summary": "Список расходов группы",
+                "operationId": "cf23c5cb31e053be5ba0a48f24117904",
+                "parameters": [
+                    {
+                        "name": "group",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Расходы"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
             "post": {
                 "tags": [
                     "Expenses"
@@ -202,6 +511,78 @@
                     }
                 ]
             }
+        },
+        "/groups/{group}/expenses/{expense}": {
+            "put": {
+                "tags": [
+                    "Expenses"
+                ],
+                "summary": "Изменить расход",
+                "operationId": "8b2eee60f9a68e852fff4b83f0ca7a94",
+                "parameters": [
+                    {
+                        "name": "group",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "expense",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Расход обновлён"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "delete": {
+                "tags": [
+                    "Expenses"
+                ],
+                "summary": "Удалить расход",
+                "operationId": "5c25c49b849a30ddd56ddaa718a1ebae",
+                "parameters": [
+                    {
+                        "name": "group",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    },
+                    {
+                        "name": "expense",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Расход удалён"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
         }
     },
     "components": {
@@ -222,6 +603,12 @@
         },
         {
             "name": "Expenses"
+        },
+        {
+            "name": "Balances"
+        },
+        {
+            "name": "Invitations"
         }
     ]
 }
