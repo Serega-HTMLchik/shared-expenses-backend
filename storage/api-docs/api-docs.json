@@ -439,6 +439,44 @@
                 ]
             }
         },
+        "/receipts": {
+            "post": {
+                "tags": [
+                    "Expenses"
+                ],
+                "summary": "Загрузить файл чека",
+                "operationId": "e0af388d2a1ac13722c205673c36c3ce",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "required": [
+                                    "receipt"
+                                ],
+                                "properties": {
+                                    "receipt": {
+                                        "type": "string",
+                                        "format": "binary"
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Возвращает публичный URL файла"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/groups/{group}/expenses": {
             "get": {
                 "tags": [

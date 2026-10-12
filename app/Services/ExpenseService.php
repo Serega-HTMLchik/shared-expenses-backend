@@ -28,9 +28,9 @@ class ExpenseService
             if (! $members->has($data['payer_id'])) {
                 abort(422, 'Payer must be a group member.');
             }
-            $payload = collect($data)->except(['shares', 'receipt'])->all();
-            if (isset($data['receipt'])) {
-                $payload['receipt_path'] = $data['receipt']->store('receipts');
+            $payload = collect($data)->except(['shares', 'receipt_url'])->all();
+            if (isset($data['receipt_url'])) {
+                $payload['receipt_path'] = $data['receipt_url'];
             }
             if ($expense === null) {
                 $expense = $group->expenses()->create($payload + ['created_by_id' => $actor->id]);
@@ -59,7 +59,7 @@ class ExpenseService
                 abort(422, 'Exact shares must equal the expense amount.');
             }
 
-return $amounts;
+            return $amounts;
         }
         $weights = $type === 'shares' ? array_map(fn (array $share): int => (int) $share['units'], $shares) : array_fill(0, count($shares), 1);
         if (array_sum($weights) < 1) {

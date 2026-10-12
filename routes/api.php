@@ -5,6 +5,7 @@ use App\Http\Controllers\Api\V1\BalanceController;
 use App\Http\Controllers\Api\V1\ExpenseController;
 use App\Http\Controllers\Api\V1\GroupController;
 use App\Http\Controllers\Api\V1\InvitationController;
+use App\Http\Controllers\Api\V1\ReceiptController;
 use Illuminate\Support\Facades\Route;
 
 Route::prefix('v1')->group(function (): void {
@@ -13,6 +14,7 @@ Route::prefix('v1')->group(function (): void {
     Route::get('invitations/{token}', [InvitationController::class, 'show']);
     Route::middleware('auth:sanctum')->group(function (): void {
         Route::post('logout', [AuthController::class, 'logout']);
+        Route::post('receipts', [ReceiptController::class, 'store']);
         Route::apiResource('groups', GroupController::class)->only(['index', 'store', 'show']);
         Route::post('groups/{group}/close', [GroupController::class, 'close']);
         Route::post('groups/{group}/reopen', [GroupController::class, 'reopen']);

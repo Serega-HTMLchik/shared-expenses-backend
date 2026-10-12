@@ -53,6 +53,9 @@ class OpenApi
     #[OA\Get(path: '/balances', tags: ['Balances'], security: [['sanctum' => []]], summary: 'Балансы по всем группам', responses: [new OA\Response(response: 200, description: 'Балансы')])]
     public function allBalances(): void {}
 
+    #[OA\Post(path: '/receipts', tags: ['Expenses'], security: [['sanctum' => []]], summary: 'Загрузить файл чека', requestBody: new OA\RequestBody(required: true, content: new OA\MediaType(mediaType: 'multipart/form-data', schema: new OA\Schema(required: ['receipt'], properties: [new OA\Property(property: 'receipt', type: 'string', format: 'binary')]))), responses: [new OA\Response(response: 201, description: 'Возвращает публичный URL файла')])]
+    public function uploadReceipt(): void {}
+
     #[OA\Get(path: '/groups/{group}/expenses', tags: ['Expenses'], security: [['sanctum' => []]], summary: 'Список расходов группы', parameters: [new OA\Parameter(name: 'group', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Расходы')])]
     public function expenses(): void {}
 
