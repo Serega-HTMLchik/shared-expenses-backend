@@ -332,6 +332,33 @@
                 ]
             }
         },
+        "/invitations/{token}": {
+            "get": {
+                "tags": [
+                    "Invitations"
+                ],
+                "summary": "Просмотреть приглашение",
+                "operationId": "5c4e12dcc11281c2d9251bf3297cd0aa",
+                "parameters": [
+                    {
+                        "name": "token",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Информация о группе"
+                    },
+                    "410": {
+                        "description": "Приглашение истекло или использовано"
+                    }
+                }
+            }
+        },
         "/invitations/{token}/accept": {
             "post": {
                 "tags": [

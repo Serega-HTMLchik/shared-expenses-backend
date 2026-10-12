@@ -41,6 +41,9 @@ class OpenApi
     #[OA\Post(path: '/groups/{group}/invitations', tags: ['Invitations'], security: [['sanctum' => []]], summary: 'Создать приглашение по ссылке или email', parameters: [new OA\Parameter(name: 'group', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], requestBody: new OA\RequestBody(content: new OA\JsonContent(properties: [new OA\Property(property: 'email', type: 'string', format: 'email', nullable: true), new OA\Property(property: 'expires_in_days', type: 'integer', example: 7)])), responses: [new OA\Response(response: 201, description: 'Возвращает accept_url; если указан email, приглашение отправлено письмом')])]
     public function invite(): void {}
 
+    #[OA\Get(path: '/invitations/{token}', tags: ['Invitations'], summary: 'Просмотреть приглашение', parameters: [new OA\Parameter(name: 'token', in: 'path', required: true, schema: new OA\Schema(type: 'string'))], responses: [new OA\Response(response: 200, description: 'Информация о группе'), new OA\Response(response: 410, description: 'Приглашение истекло или использовано')])]
+    public function showInvitation(): void {}
+
     #[OA\Post(path: '/invitations/{token}/accept', tags: ['Invitations'], security: [['sanctum' => []]], summary: 'Принять приглашение', parameters: [new OA\Parameter(name: 'token', in: 'path', required: true, schema: new OA\Schema(type: 'string'))], responses: [new OA\Response(response: 200, description: 'Участник добавлен'), new OA\Response(response: 410, description: 'Приглашение истекло или использовано')])]
     public function acceptInvitation(): void {}
 

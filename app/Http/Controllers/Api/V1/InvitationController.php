@@ -15,6 +15,14 @@ use Illuminate\Support\Str;
 
 class InvitationController extends Controller
 {
+    public function show(string $token): JsonResponse
+    {
+        $invitation = GroupInvitation::with('group:id,name,currency,closed_at')->where('token', $token)->firstOrFail();
+        abort_if($invitation->accepted_at !== null || $invitation->expires_at->isPast(), 410, 'Invitation is no longer valid.');
+
+        return response()->json(['group' => $invitation->group, 'expires_at' => $invitation->expires_at]);
+    }
+
     public function store(StoreInvitationRequest $request, Group $group): JsonResponse
     {
         abort_unless($group->owner_id === $request->user()->id, 403);
