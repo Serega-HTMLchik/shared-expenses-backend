@@ -1,58 +1,77 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# API «Совместные расходы»
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Laravel API для групповых расходов, расчётов, приглашений, уведомлений и напоминаний. В репозитории верхнего уровня подготовлен единый Docker Compose: он запускает это API вместе с PostgreSQL, обработчиком очереди, планировщиком, Laravel Reverb и React-клиентом.
 
-## About Laravel
+## Быстрый запуск в Docker
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
-
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
-
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
-
-## Learning Laravel
-
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
-
-In addition, [Laracasts](https://laracasts.com) contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
-
-You can also watch bite-sized lessons with real-world projects on [Laravel Learn](https://laravel.com/learn), where you will be guided through building a Laravel application from scratch while learning PHP fundamentals.
-
-## Agentic Development
-
-Laravel's predictable structure and conventions make it ideal for AI coding agents like Claude Code, Cursor, and GitHub Copilot. Install [Laravel Boost](https://laravel.com/docs/ai) to supercharge your AI workflow:
+Выполните команды из каталога `shared-expenses-backend`. Рядом с ним должен находиться каталог `shared-expenses-frontend`:
 
 ```bash
-composer require laravel/boost --dev
-
-php artisan boost:install
+cp docker-compose.env.example .env
+docker compose up --build
 ```
 
-Boost provides your agent 15+ tools and skills that help agents build Laravel applications while following best practices.
+После успешной инициализации миграции будут применены автоматически. Чеки сохраняются в отдельном Docker volume, который подключён и к Laravel storage, и к публичному пути `/storage`.
 
-## Contributing
+API доступно по адресу `http://localhost:8000`, документация OpenAPI — `http://localhost:8000/api/documentation`, а пользовательский интерфейс — `http://localhost:5173`.
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+Контейнеры выполняют следующие роли:
 
-## Code of Conduct
+| Сервис | Назначение |
+| --- | --- |
+| `api` | HTTP API Laravel |
+| `db` | PostgreSQL 16 |
+| `queue` | Фоновые задания и почтовые уведомления |
+| `scheduler` | Ежедневная проверка напоминаний должникам |
+| `reverb` | WebSocket-сервер для мгновенных обновлений |
+| `frontend` | Собранный React-клиент и прокси для `/api` и WebSocket |
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+Полезные команды:
 
-## Security Vulnerabilities
+```bash
+docker compose logs -f
+docker compose exec api php artisan test
+docker compose exec api php artisan l5-swagger:generate
+docker compose down
+```
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+`docker compose down -v` удаляет и базу данных, и загруженные чеки; используйте эту команду только когда данные больше не нужны.
 
-## License
+## Настройка сервера
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+1. Разместите рядом каталоги `shared-expenses-backend` и `shared-expenses-frontend` на сервере.
+2. В каталоге `shared-expenses-backend` скопируйте `docker-compose.env.example` в `.env`.
+3. Задайте уникальные `BACKEND_APP_KEY`, `POSTGRES_PASSWORD` и `REVERB_APP_SECRET`. Ключ приложения можно создать так: `docker compose run --rm api php artisan key:generate --show`.
+4. Укажите публичные HTTPS-адреса:
+
+   ```dotenv
+   FRONTEND_PUBLIC_URL=https://expenses.example.com
+   FRONTEND_URL=https://expenses.example.com
+   APP_URL=https://expenses.example.com
+   VITE_REVERB_PORT=443
+   VITE_REVERB_SCHEME=https
+   ```
+
+5. Настройте SMTP-параметры `MAIL_*`. При значении `MAIL_MAILER=log` письма не отправляются, а записываются в журналы контейнера.
+6. Разместите перед портом `FRONTEND_PORT` обратный прокси с TLS. Он должен передавать WebSocket-заголовки `Upgrade` и `Connection` для пути `/app/`.
+7. Запустите обновлённые контейнеры:
+
+   ```bash
+   docker compose up -d --build
+   ```
+
+Для публичного сервера не открывайте порты PostgreSQL и Reverb в интернет без необходимости: клиент подключается к WebSocket через публичный фронтенд по пути `/app/`.
+
+## Запуск без Docker
+
+Нужны PHP 8.4, Composer, PostgreSQL и Node.js. Создайте локальный `.env` из `.env.example`, настройте PostgreSQL и затем выполните:
+
+```bash
+composer install
+php artisan key:generate
+php artisan migrate
+php artisan storage:link
+php artisan serve
+```
+
+Для фоновых задач в отдельных терминалах выполните `php artisan queue:work`, `php artisan schedule:work` и `php artisan reverb:start`.

@@ -1,0 +1,133 @@
+name: shared-expenses
+
+x-backend: &backend
+  image: shared-expenses-backend:local
+  build:
+    context: .
+  environment: &backend-environment
+    APP_ENV: ${APP_ENV:-production}
+    APP_KEY: ${BACKEND_APP_KEY:-base64:4qrpLTzwU5N2Uwk0qYQvJ7T2yUOZBH2vwrONoZCTkfk=}
+    APP_DEBUG: ${APP_DEBUG:-false}
+    APP_URL: ${APP_URL:-http://localhost:8000}
+    FRONTEND_URL: ${FRONTEND_URL:-http://localhost:5173}
+    LOG_CHANNEL: ${LOG_CHANNEL:-stderr}
+    DB_CONNECTION: pgsql
+    DB_HOST: db
+    DB_PORT: 5432
+    DB_DATABASE: ${POSTGRES_DB:-shared_expenses}
+    DB_USERNAME: ${POSTGRES_USER:-shared_expenses}
+    DB_PASSWORD: ${POSTGRES_PASSWORD:-shared_expenses}
+    CACHE_STORE: database
+    SESSION_DRIVER: database
+    QUEUE_CONNECTION: database
+    FILESYSTEM_DISK: public
+    BROADCAST_CONNECTION: reverb
+    REVERB_APP_ID: ${REVERB_APP_ID:-shared-expenses}
+    REVERB_APP_KEY: ${REVERB_APP_KEY:-shared-expenses-key}
+    REVERB_APP_SECRET: ${REVERB_APP_SECRET:-shared-expenses-secret}
+    REVERB_SERVER_HOST: 0.0.0.0
+    REVERB_SERVER_PORT: 8080
+    REVERB_HOST: reverb
+    REVERB_PORT: 8080
+    REVERB_SCHEME: http
+    MAIL_MAILER: ${MAIL_MAILER:-log}
+    MAIL_SCHEME: ${MAIL_SCHEME:-}
+    MAIL_HOST: ${MAIL_HOST:-}
+    MAIL_PORT: ${MAIL_PORT:-}
+    MAIL_USERNAME: ${MAIL_USERNAME:-}
+    MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    MAIL_FROM_ADDRESS: ${MAIL_FROM_ADDRESS:-hello@example.com}
+    MAIL_FROM_NAME: ${MAIL_FROM_NAME:-Совместные расходы}
+  depends_on:
+    db:
+      condition: service_healthy
+  volumes:
+    - backend_storage:/var/www/html/storage
+    - backend_public_uploads:/var/www/html/storage/app/public
+    - backend_public_uploads:/var/www/html/public/storage
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-shared_expenses}
+      POSTGRES_USER: ${POSTGRES_USER:-shared_expenses}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shared_expenses}
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  init:
+    <<: *backend
+    command:
+      - sh
+      - -ec
+      - |
+        mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs
+        php artisan migrate --force
+    restart: "no"
+
+  api:
+    <<: *backend
+    command: php artisan serve --host=0.0.0.0 --port=8000
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    ports:
+      - "${API_PORT:-8000}:8000"
+    restart: unless-stopped
+
+  queue:
+    <<: *backend
+    command: php artisan queue:work --sleep=3 --tries=3 --timeout=90
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  scheduler:
+    <<: *backend
+    command: php artisan schedule:work
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    restart: unless-stopped
+
+  reverb:
+    <<: *backend
+    command: php artisan reverb:start
+    depends_on:
+      init:
+        condition: service_completed_successfully
+    ports:
+      - "${REVERB_PORT:-8080}:8080"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ../shared-expenses-frontend
+      args:
+        VITE_API_BASE_URL: /api/v1
+        VITE_API_ORIGIN: ${FRONTEND_PUBLIC_URL:-http://localhost:5173}
+        VITE_REVERB_APP_KEY: ${REVERB_APP_KEY:-shared-expenses-key}
+        VITE_REVERB_HOST: ${VITE_REVERB_HOST:-}
+        VITE_REVERB_PORT: ${VITE_REVERB_PORT:-5173}
+        VITE_REVERB_SCHEME: ${VITE_REVERB_SCHEME:-http}
+    depends_on:
+      api:
+        condition: service_started
+      reverb:
+        condition: service_started
+    ports:
+      - "${FRONTEND_PORT:-5173}:80"
+    restart: unless-stopped
+
+volumes:
+  backend_storage:
+  backend_public_uploads:
+  postgres_data:
