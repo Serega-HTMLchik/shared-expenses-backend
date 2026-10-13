@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-#[Fillable(['from_user_id', 'to_user_id', 'amount_cents'])]
+#[Fillable(['from_user_id', 'to_user_id', 'amount_cents', 'status', 'confirmed_at'])]
 class Settlement extends Model
 {
     use HasFactory;
