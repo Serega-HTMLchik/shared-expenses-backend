@@ -283,6 +283,35 @@
                 ]
             }
         },
+        "/groups/{group}/report": {
+            "get": {
+                "tags": [
+                    "Groups"
+                ],
+                "summary": "Итоговый отчёт закрытой группы",
+                "operationId": "4854847645477e52cc9048c744d5f1bd",
+                "parameters": [
+                    {
+                        "name": "group",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Балансы и рекомендуемые переводы"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/groups/{group}/invitations": {
             "post": {
                 "tags": [
@@ -430,6 +459,226 @@
                 "responses": {
                     "200": {
                         "description": "Балансы"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/debts": {
+            "get": {
+                "tags": [
+                    "Balances"
+                ],
+                "summary": "Все задолженности текущего пользователя",
+                "operationId": "74f9ceaa5c87d21fc36aeb763bec1235",
+                "responses": {
+                    "200": {
+                        "description": "Долги во всех группах"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/groups/{group}/settlements": {
+            "get": {
+                "tags": [
+                    "Settlements"
+                ],
+                "summary": "Погашения пользователя в группе",
+                "operationId": "cdb97af8257306874adffdab989dad18",
+                "parameters": [
+                    {
+                        "name": "group",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Ожидающие и подтверждённые погашения"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            },
+            "post": {
+                "tags": [
+                    "Settlements"
+                ],
+                "summary": "Создать полное или частичное погашение",
+                "operationId": "2212b65046af3920e35a87e4008df226",
+                "parameters": [
+                    {
+                        "name": "group",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "required": [
+                                    "to_user_id",
+                                    "amount_cents"
+                                ],
+                                "properties": {
+                                    "to_user_id": {
+                                        "type": "integer"
+                                    },
+                                    "amount_cents": {
+                                        "type": "integer",
+                                        "example": 1500
+                                    }
+                                },
+                                "type": "object"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Погашение создано со статусом pending"
+                    },
+                    "422": {
+                        "description": "Сумма больше долга"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/settlements/{settlement}/confirm": {
+            "post": {
+                "tags": [
+                    "Settlements"
+                ],
+                "summary": "Подтвердить погашение получателем",
+                "operationId": "849c3c9074b77088a9e21a2b30f2e6a0",
+                "parameters": [
+                    {
+                        "name": "settlement",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "integer"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Погашение подтверждено"
+                    },
+                    "403": {
+                        "description": "Подтверждать может только получатель"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/settlements": {
+            "get": {
+                "tags": [
+                    "Settlements"
+                ],
+                "summary": "История погашений пользователя",
+                "operationId": "fa18e2695ec72c78be6e3ea59e2d8c36",
+                "responses": {
+                    "200": {
+                        "description": "Список погашений"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/notifications": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Уведомления текущего пользователя",
+                "operationId": "8bbe401da6a406d3152a0514a9768cdf",
+                "responses": {
+                    "200": {
+                        "description": "До 50 уведомлений"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/notifications/{notification}/read": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Пометить уведомление прочитанным",
+                "operationId": "086119db13b498af66c76e87f7c24e18",
+                "parameters": [
+                    {
+                        "name": "notification",
+                        "in": "path",
+                        "required": true,
+                        "schema": {
+                            "type": "string",
+                            "format": "uuid"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Уведомление обновлено"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
+        "/notifications/read-all": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "summary": "Пометить все уведомления прочитанными",
+                "operationId": "343537b44e3beb7a48a4f8b1b744b56b",
+                "responses": {
+                    "204": {
+                        "description": "Уведомления обновлены"
                     }
                 },
                 "security": [
@@ -674,6 +923,12 @@
         },
         {
             "name": "Invitations"
+        },
+        {
+            "name": "Settlements"
+        },
+        {
+            "name": "Notifications"
         }
     ]
 }

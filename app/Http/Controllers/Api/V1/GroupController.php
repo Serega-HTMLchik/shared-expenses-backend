@@ -5,6 +5,8 @@ namespace App\Http\Controllers\Api\V1;
 use App\Http\Controllers\Controller;
 use App\Models\Activity;
 use App\Models\Group;
+use App\Notifications\GroupClosed;
+use App\Services\BalanceCalculator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -38,12 +40,15 @@ class GroupController extends Controller
         return response()->json($group->load('members.user:id,name,email'));
     }
 
-    public function close(Request $request, Group $group): JsonResponse
+    public function close(Request $request, Group $group, BalanceCalculator $calculator): JsonResponse
     {
         abort_unless($group->owner_id === $request->user()->id, 403);
         $group->update(['closed_at' => now()]);
 
-        return response()->json($group);
+        $transfers = $calculator->suggestedTransfers($group);
+        $group->members()->with('user')->get()->each(fn ($member) => $member->user->notify(new GroupClosed($group, $transfers)));
+
+        return response()->json(['group' => $group, 'report' => ['balances' => $calculator->netBalances($group), 'suggested_transfers' => $transfers]]);
     }
 
     public function reopen(Request $request, Group $group): JsonResponse
@@ -52,6 +57,13 @@ class GroupController extends Controller
         $group->update(['closed_at' => null]);
 
         return response()->json($group);
+    }
+
+    public function report(Request $request, Group $group, BalanceCalculator $calculator): JsonResponse
+    {
+        $this->member($request, $group);
+
+        return response()->json(['group' => $group, 'balances' => $calculator->netBalances($group), 'suggested_transfers' => $calculator->suggestedTransfers($group)]);
     }
 
     private function member(Request $request, Group $group): void

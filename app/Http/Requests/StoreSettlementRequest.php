@@ -12,7 +12,7 @@ class StoreSettlementRequest extends FormRequest
      */
     public function authorize(): bool
     {
-        return false;
+        return true;
     }
 
     /**
@@ -23,7 +23,8 @@ class StoreSettlementRequest extends FormRequest
     public function rules(): array
     {
         return [
-            //
+            'to_user_id' => ['required', 'integer', 'exists:users,id'],
+            'amount_cents' => ['required', 'integer', 'min:1'],
         ];
     }
 }

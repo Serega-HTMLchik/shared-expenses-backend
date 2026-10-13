@@ -43,8 +43,10 @@ class ExpenseService
             foreach ($shares as $index => $share) {
                 $expense->shares()->create(['user_id' => $share['user_id'], 'amount_cents' => $amounts[$index], 'units' => $share['units'] ?? null]);
             }
-            Activity::create(['group_id' => $group->id, 'actor_id' => $actor->id, 'type' => $expense->wasRecentlyCreated ? 'expense.created' : 'expense.updated', 'data' => ['expense_id' => $expense->id]]);
-            User::whereIn('id', $shares->pluck('user_id'))->get()->each->notify(new ExpenseInvolved($expense));
+            $event = $expense->wasRecentlyCreated ? 'created' : 'updated';
+            Activity::create(['group_id' => $group->id, 'actor_id' => $actor->id, 'type' => "expense.{$event}", 'data' => ['expense_id' => $expense->id]]);
+            $expense->load('group');
+            User::whereIn('id', $shares->pluck('user_id'))->get()->each->notify(new ExpenseInvolved($expense, $event));
 
             return $expense->load(['payer:id,name,email', 'shares.user:id,name,email']);
         });
