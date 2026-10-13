@@ -21,11 +21,16 @@ class ExpenseInvolved extends Notification implements ShouldQueue
 
     public function toArray(object $notifiable): array
     {
-        return ['kind' => "expense.{$this->event}", 'title' => $this->event === 'created' ? 'Новый расход' : 'Расход изменён', 'body' => "Расход на {$this->expense->amount_cents} коп. в группе «{$this->expense->group->name}».", 'expense_id' => $this->expense->id, 'group_id' => $this->expense->group_id, 'amount_cents' => $this->expense->amount_cents];
+        return ['kind' => "expense.{$this->event}", 'title' => $this->event === 'created' ? 'Новый расход' : 'Расход изменён', 'body' => "Расход на {$this->amount()} в группе «{$this->expense->group->name}».", 'expense_id' => $this->expense->id, 'group_id' => $this->expense->group_id, 'amount_cents' => $this->expense->amount_cents];
     }
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)->subject($this->event === 'created' ? 'Новый общий расход' : 'Общий расход изменён')->line("Вы участвуете в расходе на {$this->expense->amount_cents} коп. в группе «{$this->expense->group->name}».");
+        return (new MailMessage)->subject($this->event === 'created' ? 'Новый общий расход' : 'Общий расход изменён')->line("Вы участвуете в расходе на {$this->amount()} в группе «{$this->expense->group->name}».");
+    }
+
+    private function amount(): string
+    {
+        return number_format($this->expense->amount_cents / 100, 2, ',', ' ').' '.$this->expense->group->currency;
     }
 }
