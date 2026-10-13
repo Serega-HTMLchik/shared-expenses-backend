@@ -9,9 +9,10 @@ use App\Http\Requests\StoreInvitationRequest;
 use App\Models\Activity;
 use App\Models\Group;
 use App\Models\GroupInvitation;
+use App\Notifications\GroupInvitationReceived;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification;
 use Illuminate\Support\Str;
 
 class InvitationController extends Controller
@@ -39,9 +40,7 @@ class InvitationController extends Controller
         $acceptUrl = rtrim((string) config('app.frontend_url'), '/').'/invitations/'.$invitation->token;
 
         if ($invitation->email !== null) {
-            Mail::raw("You have been invited to join {$group->name}. Accept: {$acceptUrl}", function ($message) use ($invitation): void {
-                $message->to($invitation->email)->subject('Group invitation');
-            });
+            Notification::route('mail', $invitation->email)->notify(new GroupInvitationReceived($group, $acceptUrl));
         }
 
         Activity::create(['group_id' => $group->id, 'actor_id' => $request->user()->id, 'type' => 'invitation.created', 'data' => ['invitation_id' => $invitation->id, 'email' => $invitation->email]]);

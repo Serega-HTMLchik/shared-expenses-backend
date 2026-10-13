@@ -6,12 +6,13 @@ use App\Events\SharedExpensesChanged;
 use App\Events\UserNotificationsChanged;
 use App\Models\Group;
 use App\Models\User;
+use App\Notifications\GroupInvitationReceived;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Notifications\Events\NotificationSent;
 use Illuminate\Notifications\Notification;
 use Illuminate\Support\Facades\Event;
-use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Notification as NotificationFacade;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -97,7 +98,7 @@ class SharedExpensesApiTest extends TestCase
 
     public function test_returns_frontend_invitation_link(): void
     {
-        Mail::fake();
+        NotificationFacade::fake();
         config(['app.frontend_url' => 'http://localhost:5173']);
         $owner = User::factory()->create();
         Sanctum::actingAs($owner);
@@ -106,6 +107,11 @@ class SharedExpensesApiTest extends TestCase
         $response = $this->postJson("/api/v1/groups/{$group['id']}/invitations", ['email' => 'guest@example.test'])->assertCreated();
 
         $this->assertStringStartsWith('http://localhost:5173/invitations/', $response->json('accept_url'));
+        NotificationFacade::assertSentOnDemand(
+            GroupInvitationReceived::class,
+            fn (GroupInvitationReceived $notification, array $channels, object $notifiable): bool => $channels === ['mail']
+                && $notifiable->routes['mail'] === 'guest@example.test',
+        );
     }
 
     public function test_uploads_receipt_and_returns_public_url(): void
