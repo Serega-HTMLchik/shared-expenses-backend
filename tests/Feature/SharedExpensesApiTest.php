@@ -6,6 +6,7 @@ use App\Events\SharedExpensesChanged;
 use App\Events\UserNotificationsChanged;
 use App\Models\Group;
 use App\Models\User;
+use App\Notifications\DebtReminderNotification;
 use App\Notifications\GroupInvitationReceived;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -25,8 +26,18 @@ class SharedExpensesApiTest extends TestCase
     {
         $owner = User::factory()->create(['email' => 'z@example.test']);
         Sanctum::actingAs($owner);
-        $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB'])->assertCreated()->json();
+        $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB', 'reminder_after_days' => 7])->assertCreated()->json();
         $this->assertDatabaseHas('group_members', ['group_id' => $group['id'], 'user_id' => $owner->id]);
+    }
+
+    public function test_requires_debt_reminder_period_when_creating_a_group(): void
+    {
+        $owner = User::factory()->create();
+        Sanctum::actingAs($owner);
+
+        $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB'])
+            ->assertUnprocessable()
+            ->assertJsonValidationErrors('reminder_after_days');
     }
 
     public function test_broadcasts_created_group_change_to_its_member(): void
@@ -35,7 +46,7 @@ class SharedExpensesApiTest extends TestCase
         $owner = User::factory()->create();
         Sanctum::actingAs($owner);
 
-        $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB'])->assertCreated()->json();
+        $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB', 'reminder_after_days' => 7])->assertCreated()->json();
 
         Event::assertDispatched(SharedExpensesChanged::class, fn (SharedExpensesChanged $event): bool => $event->group->id === $group['id']
             && $event->type === 'group.created');
@@ -55,7 +66,7 @@ class SharedExpensesApiTest extends TestCase
     {
         $owner = User::factory()->create();
         Sanctum::actingAs($owner);
-        $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB'])->assertCreated()->json();
+        $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB', 'reminder_after_days' => 7])->assertCreated()->json();
 
         $this->postJson("/api/v1/groups/{$group['id']}/expenses", [
             'payer_id' => $owner->id,
@@ -76,7 +87,7 @@ class SharedExpensesApiTest extends TestCase
         $owner = User::factory()->create();
         $member = User::factory()->create();
         Sanctum::actingAs($owner);
-        $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB'])->assertCreated()->json();
+        $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB', 'reminder_after_days' => 7])->assertCreated()->json();
         $groupModel = Group::findOrFail($group['id']);
         $groupModel->members()->create(['user_id' => $member->id]);
 
@@ -96,13 +107,57 @@ class SharedExpensesApiTest extends TestCase
             ->assertJsonPath('0.currency', 'RUB');
     }
 
+    public function test_sends_one_weekly_reminder_only_for_an_overdue_unpaid_debt(): void
+    {
+        $owner = User::factory()->create();
+        $member = User::factory()->create();
+        Sanctum::actingAs($owner);
+        $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB', 'reminder_after_days' => 1])->assertCreated()->json();
+        $groupModel = Group::findOrFail($group['id']);
+        $groupModel->members()->create(['user_id' => $member->id]);
+
+        $this->postJson("/api/v1/groups/{$group['id']}/expenses", [
+            'payer_id' => $owner->id,
+            'amount_cents' => 10000,
+            'spent_on' => now()->subDays(2)->toDateString(),
+            'split_type' => 'equal',
+            'shares' => [['user_id' => $owner->id], ['user_id' => $member->id]],
+        ])->assertCreated();
+
+        NotificationFacade::fake();
+
+        $this->artisan('app:send-debt-reminders')->assertSuccessful();
+        $this->artisan('app:send-debt-reminders')->assertSuccessful();
+
+        NotificationFacade::assertSentTo(
+            $member,
+            DebtReminderNotification::class,
+            fn (DebtReminderNotification $notification): bool => $notification->recipient->is($owner)
+                && $notification->amountCents === 5000,
+        );
+        NotificationFacade::assertSentToTimes($member, DebtReminderNotification::class, 1);
+
+        $groupModel->settlements()->create([
+            'from_user_id' => $member->id,
+            'to_user_id' => $owner->id,
+            'amount_cents' => 5000,
+            'status' => 'confirmed',
+            'confirmed_at' => now(),
+        ]);
+        NotificationFacade::fake();
+
+        $this->artisan('app:send-debt-reminders')->assertSuccessful();
+
+        NotificationFacade::assertNothingSent();
+    }
+
     public function test_returns_frontend_invitation_link(): void
     {
         NotificationFacade::fake();
         config(['app.frontend_url' => 'http://localhost:5173']);
         $owner = User::factory()->create();
         Sanctum::actingAs($owner);
-        $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB'])->assertCreated()->json();
+        $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB', 'reminder_after_days' => 7])->assertCreated()->json();
 
         $response = $this->postJson("/api/v1/groups/{$group['id']}/invitations", ['email' => 'guest@example.test'])->assertCreated();
 

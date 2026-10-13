@@ -22,7 +22,7 @@ class GroupController extends Controller
 
     public function store(Request $request): JsonResponse
     {
-        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'currency' => ['required', 'string', 'size:3'], 'reminder_after_days' => ['nullable', 'integer', 'min:1', 'max:365']]);
+        $data = $request->validate(['name' => ['required', 'string', 'max:255'], 'currency' => ['required', 'string', 'size:3'], 'reminder_after_days' => ['required', 'integer', 'min:1', 'max:365']]);
         $group = DB::transaction(function () use ($data, $request): Group {
             $group = Group::create($data + ['owner_id' => $request->user()->id, 'invite_token' => Str::random(48)]);
             $group->members()->create(['user_id' => $request->user()->id]);

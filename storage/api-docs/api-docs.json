@@ -161,7 +161,8 @@
                             "schema": {
                                 "required": [
                                     "name",
-                                    "currency"
+                                    "currency",
+                                    "reminder_after_days"
                                 ],
                                 "properties": {
                                     "name": {
@@ -172,6 +173,7 @@
                                         "example": "RUB"
                                     },
                                     "reminder_after_days": {
+                                        "description": "Через сколько дней отправлять напоминание о непогашенном долге",
                                         "type": "integer",
                                         "example": 7
                                     }

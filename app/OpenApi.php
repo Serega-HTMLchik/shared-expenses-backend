@@ -28,7 +28,24 @@ class OpenApi
     #[OA\Get(path: '/groups', tags: ['Groups'], security: [['sanctum' => []]], summary: 'Список групп текущего пользователя', responses: [new OA\Response(response: 200, description: 'Список групп'), new OA\Response(response: 401, description: 'Не авторизован')])]
     public function groups(): void {}
 
-    #[OA\Post(path: '/groups', tags: ['Groups'], security: [['sanctum' => []]], summary: 'Создать группу', requestBody: new OA\RequestBody(required: true, content: new OA\JsonContent(required: ['name', 'currency'], properties: [new OA\Property(property: 'name', type: 'string'), new OA\Property(property: 'currency', type: 'string', example: 'RUB'), new OA\Property(property: 'reminder_after_days', type: 'integer', example: 7)])), responses: [new OA\Response(response: 201, description: 'Группа создана')])]
+    #[OA\Post(
+        path: '/groups',
+        tags: ['Groups'],
+        security: [['sanctum' => []]],
+        summary: 'Создать группу',
+        requestBody: new OA\RequestBody(
+            required: true,
+            content: new OA\JsonContent(
+                required: ['name', 'currency', 'reminder_after_days'],
+                properties: [
+                    new OA\Property(property: 'name', type: 'string'),
+                    new OA\Property(property: 'currency', type: 'string', example: 'RUB'),
+                    new OA\Property(property: 'reminder_after_days', type: 'integer', example: 7, description: 'Через сколько дней отправлять напоминание о непогашенном долге'),
+                ],
+            ),
+        ),
+        responses: [new OA\Response(response: 201, description: 'Группа создана')],
+    )]
     public function createGroup(): void {}
 
     #[OA\Get(path: '/groups/{group}', tags: ['Groups'], security: [['sanctum' => []]], summary: 'Получить группу и участников', parameters: [new OA\Parameter(name: 'group', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Группа'), new OA\Response(response: 404, description: 'Группа недоступна')])]

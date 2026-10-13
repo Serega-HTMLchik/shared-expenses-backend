@@ -22,11 +22,16 @@ class DebtReminderNotification extends Notification implements ShouldQueue
 
     public function toArray(object $notifiable): array
     {
-        return ['kind' => 'debt.reminder', 'title' => 'Напоминание о долге', 'body' => "Вы должны {$this->amountCents} коп. пользователю {$this->recipient->name} в группе «{$this->group->name}».", 'group_id' => $this->group->id, 'to_user_id' => $this->recipient->id, 'amount_cents' => $this->amountCents];
+        return ['kind' => 'debt.reminder', 'title' => 'Напоминание о долге', 'body' => "Вы должны {$this->amount()} пользователю {$this->recipient->name} в группе «{$this->group->name}».", 'group_id' => $this->group->id, 'to_user_id' => $this->recipient->id, 'amount_cents' => $this->amountCents];
     }
 
     public function toMail(object $notifiable): MailMessage
     {
-        return (new MailMessage)->subject('Напоминание о долге')->line("В группе «{$this->group->name}» у вас остался долг {$this->amountCents} коп. получателю {$this->recipient->name}.");
+        return (new MailMessage)->subject('Напоминание о долге')->line("В группе «{$this->group->name}» у вас остался долг {$this->amount()} получателю {$this->recipient->name}.");
+    }
+
+    private function amount(): string
+    {
+        return number_format($this->amountCents / 100, 2, ',', ' ').' '.$this->group->currency;
     }
 }
