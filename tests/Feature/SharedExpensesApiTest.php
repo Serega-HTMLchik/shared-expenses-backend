@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Events\SharedExpensesChanged;
 use App\Events\UserNotificationsChanged;
+use App\Models\Group;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -67,6 +68,31 @@ class SharedExpensesApiTest extends TestCase
 
         $this->assertDatabaseHas('expenses', ['group_id' => $group['id'], 'created_by_id' => $owner->id, 'amount_cents' => 100000, 'receipt_path' => 'http://localhost:8000/storage/receipts/receipt.jpg']);
         $this->assertDatabaseHas('expense_shares', ['user_id' => $owner->id, 'amount_cents' => 100000]);
+    }
+
+    public function test_returns_amounts_owed_to_the_current_user(): void
+    {
+        $owner = User::factory()->create();
+        $member = User::factory()->create();
+        Sanctum::actingAs($owner);
+        $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB'])->assertCreated()->json();
+        $groupModel = Group::findOrFail($group['id']);
+        $groupModel->members()->create(['user_id' => $member->id]);
+
+        $this->postJson("/api/v1/groups/{$group['id']}/expenses", [
+            'payer_id' => $owner->id,
+            'amount_cents' => 10000,
+            'spent_on' => '2026-10-13',
+            'split_type' => 'equal',
+            'shares' => [['user_id' => $owner->id], ['user_id' => $member->id]],
+        ])->assertCreated();
+
+        $this->getJson('/api/v1/receivables')
+            ->assertOk()
+            ->assertJsonPath('0.from_user_id', $member->id)
+            ->assertJsonPath('0.to_user_id', $owner->id)
+            ->assertJsonPath('0.amount_cents', 5000)
+            ->assertJsonPath('0.currency', 'RUB');
     }
 
     public function test_returns_frontend_invitation_link(): void

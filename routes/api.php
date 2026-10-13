@@ -30,6 +30,7 @@ Route::prefix('v1')->group(function (): void {
         Route::get('groups/{group}/balances', [BalanceController::class, 'group']);
         Route::get('balances', [BalanceController::class, 'all']);
         Route::get('debts', [BalanceController::class, 'debts']);
+        Route::get('receivables', [BalanceController::class, 'receivables']);
         Route::get('groups/{group}/settlements', [SettlementController::class, 'group']);
         Route::post('groups/{group}/settlements', [SettlementController::class, 'store']);
         Route::post('settlements/{settlement}/confirm', [SettlementController::class, 'confirm']);

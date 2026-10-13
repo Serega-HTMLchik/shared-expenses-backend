@@ -61,6 +61,9 @@ class OpenApi
     #[OA\Get(path: '/debts', tags: ['Balances'], security: [['sanctum' => []]], summary: 'Минимальные итоговые долги текущего пользователя по каждой валюте', responses: [new OA\Response(response: 200, description: 'Неттинг долгов во всех группах одной валюты')])]
     public function debts(): void {}
 
+    #[OA\Get(path: '/receivables', tags: ['Balances'], security: [['sanctum' => []]], summary: 'Минимальные итоговые суммы, которые должны текущему пользователю, по каждой валюте', responses: [new OA\Response(response: 200, description: 'Неттинг входящих долгов во всех группах одной валюты')])]
+    public function receivables(): void {}
+
     #[OA\Get(path: '/groups/{group}/settlements', tags: ['Settlements'], security: [['sanctum' => []]], summary: 'Погашения пользователя в группе', parameters: [new OA\Parameter(name: 'group', in: 'path', required: true, schema: new OA\Schema(type: 'integer'))], responses: [new OA\Response(response: 200, description: 'Ожидающие и подтверждённые погашения')])]
     public function groupSettlements(): void {}
 

@@ -487,6 +487,25 @@
                 ]
             }
         },
+        "/receivables": {
+            "get": {
+                "tags": [
+                    "Balances"
+                ],
+                "summary": "Минимальные итоговые суммы, которые должны текущему пользователю, по каждой валюте",
+                "operationId": "addb570730f8a3594b8ecd84a4b0b037",
+                "responses": {
+                    "200": {
+                        "description": "Неттинг входящих долгов во всех группах одной валюты"
+                    }
+                },
+                "security": [
+                    {
+                        "sanctum": []
+                    }
+                ]
+            }
+        },
         "/groups/{group}/settlements": {
             "get": {
                 "tags": [
