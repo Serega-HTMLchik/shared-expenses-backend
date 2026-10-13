@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\SharedExpensesChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AcceptInvitationRequest;
 use App\Http\Requests\StoreInvitationRequest;
@@ -44,6 +45,7 @@ class InvitationController extends Controller
         }
 
         Activity::create(['group_id' => $group->id, 'actor_id' => $request->user()->id, 'type' => 'invitation.created', 'data' => ['invitation_id' => $invitation->id, 'email' => $invitation->email]]);
+        SharedExpensesChanged::dispatch($group, 'invitation.created');
 
         return response()->json(['invitation' => $invitation, 'accept_url' => $acceptUrl], 201);
     }
@@ -59,6 +61,7 @@ class InvitationController extends Controller
             $invitation->group->members()->firstOrCreate(['user_id' => $request->user()->id]);
             Activity::create(['group_id' => $invitation->group_id, 'actor_id' => $request->user()->id, 'type' => 'invitation.accepted', 'data' => ['invitation_id' => $invitation->id]]);
         });
+        SharedExpensesChanged::dispatch($invitation->group, 'invitation.accepted');
 
         return response()->json(['message' => 'Invitation accepted.']);
     }

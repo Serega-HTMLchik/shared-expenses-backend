@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\SharedExpensesChanged;
 use App\Models\Activity;
 use App\Models\Expense;
 use App\Models\Group;
@@ -14,7 +15,8 @@ class ExpenseService
     /** @param array<string, mixed> $data */
     public function save(Group $group, User $actor, array $data, ?Expense $expense = null): Expense
     {
-        return DB::transaction(function () use ($group, $actor, $data, $expense): Expense {
+        $changeType = $expense === null ? 'expense.created' : 'expense.updated';
+        $expense = DB::transaction(function () use ($group, $actor, $data, $expense): Expense {
             $group->lockForUpdate()->findOrFail($group->id);
             if ($group->closed_at !== null) {
                 abort(409, 'Group is closed.');
@@ -50,6 +52,10 @@ class ExpenseService
 
             return $expense->load(['payer:id,name,email', 'shares.user:id,name,email']);
         });
+
+        SharedExpensesChanged::dispatch($group, $changeType);
+
+        return $expense;
     }
 
     /** @param array<int, array<string, mixed>> $shares @return array<int, int> */

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\SharedExpensesChanged;
 use App\Http\Controllers\Controller;
 use App\Models\Activity;
 use App\Models\Group;
@@ -29,6 +30,7 @@ class GroupController extends Controller
 
             return $group;
         });
+        SharedExpensesChanged::dispatch($group, 'group.created');
 
         return response()->json($group, 201);
     }
@@ -47,6 +49,7 @@ class GroupController extends Controller
 
         $transfers = $calculator->suggestedTransfers($group);
         $group->members()->with('user')->get()->each(fn ($member) => $member->user->notify(new GroupClosed($group, $transfers)));
+        SharedExpensesChanged::dispatch($group, 'group.closed');
 
         return response()->json(['group' => $group, 'report' => ['balances' => $calculator->netBalances($group), 'suggested_transfers' => $transfers]]);
     }
@@ -55,6 +58,7 @@ class GroupController extends Controller
     {
         abort_unless($group->owner_id === $request->user()->id, 403);
         $group->update(['closed_at' => null]);
+        SharedExpensesChanged::dispatch($group, 'group.reopened');
 
         return response()->json($group);
     }

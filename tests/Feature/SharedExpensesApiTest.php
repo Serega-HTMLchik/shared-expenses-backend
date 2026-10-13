@@ -2,9 +2,14 @@
 
 namespace Tests\Feature;
 
+use App\Events\SharedExpensesChanged;
+use App\Events\UserNotificationsChanged;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Notifications\Events\NotificationSent;
+use Illuminate\Notifications\Notification;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Sanctum\Sanctum;
@@ -20,6 +25,28 @@ class SharedExpensesApiTest extends TestCase
         Sanctum::actingAs($owner);
         $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB'])->assertCreated()->json();
         $this->assertDatabaseHas('group_members', ['group_id' => $group['id'], 'user_id' => $owner->id]);
+    }
+
+    public function test_broadcasts_created_group_change_to_its_member(): void
+    {
+        Event::fake([SharedExpensesChanged::class]);
+        $owner = User::factory()->create();
+        Sanctum::actingAs($owner);
+
+        $group = $this->postJson('/api/v1/groups', ['name' => 'Trip', 'currency' => 'RUB'])->assertCreated()->json();
+
+        Event::assertDispatched(SharedExpensesChanged::class, fn (SharedExpensesChanged $event): bool => $event->group->id === $group['id']
+            && $event->type === 'group.created');
+    }
+
+    public function test_broadcasts_when_a_database_notification_is_stored(): void
+    {
+        Event::fake([UserNotificationsChanged::class]);
+        $user = User::factory()->create();
+
+        event(new NotificationSent($user, new Notification, 'database'));
+
+        Event::assertDispatched(UserNotificationsChanged::class, fn (UserNotificationsChanged $event): bool => $event->user->is($user));
     }
 
     public function test_creates_expense_with_authenticated_user_as_creator(): void

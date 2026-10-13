@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers\Api\V1;
 
+use App\Events\SharedExpensesChanged;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreExpenseRequest;
 use App\Http\Requests\UpdateExpenseRequest;
@@ -40,6 +41,7 @@ class ExpenseController extends Controller
         $this->member($request, $group);
         abort_unless($expense->group_id === $group->id, 404);
         $expense->delete();
+        SharedExpensesChanged::dispatch($group, 'expense.deleted');
 
         return response()->json([], 204);
     }

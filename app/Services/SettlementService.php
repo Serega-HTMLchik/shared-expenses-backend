@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Events\SharedExpensesChanged;
 use App\Models\Activity;
 use App\Models\Group;
 use App\Models\Settlement;
@@ -17,7 +18,7 @@ class SettlementService
     /** @param array{to_user_id: int, amount_cents: int} $data */
     public function create(Group $group, User $debtor, array $data): Settlement
     {
-        return DB::transaction(function () use ($group, $debtor, $data): Settlement {
+        $settlement = DB::transaction(function () use ($group, $debtor, $data): Settlement {
             $group = Group::query()->lockForUpdate()->findOrFail($group->id);
             $memberIds = $group->members()->pluck('user_id');
             if (! $memberIds->contains($debtor->id) || ! $memberIds->contains($data['to_user_id'])) {
@@ -38,11 +39,15 @@ class SettlementService
 
             return $settlement;
         });
+
+        SharedExpensesChanged::dispatch($group, 'settlement.created');
+
+        return $settlement;
     }
 
     public function confirm(Settlement $settlement, User $recipient): Settlement
     {
-        return DB::transaction(function () use ($settlement, $recipient): Settlement {
+        $settlement = DB::transaction(function () use ($settlement, $recipient): Settlement {
             $settlement = Settlement::query()->lockForUpdate()->findOrFail($settlement->id);
             abort_unless($settlement->to_user_id === $recipient->id, 403);
             abort_unless($settlement->status === 'pending', 409, 'Settlement is already processed.');
@@ -53,5 +58,9 @@ class SettlementService
 
             return $settlement;
         });
+
+        SharedExpensesChanged::dispatch($settlement->group, 'settlement.confirmed');
+
+        return $settlement;
     }
 }
