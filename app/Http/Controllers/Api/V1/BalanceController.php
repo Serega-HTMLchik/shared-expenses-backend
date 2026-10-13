@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\V1;
 
 use App\Http\Controllers\Controller;
 use App\Models\Group;
+use App\Models\User;
 use App\Services\BalanceCalculator;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -29,12 +30,23 @@ class BalanceController extends Controller
         $userId = $request->user()->id;
         $groups = $request->user()->groupMemberships()->with('group')->get()->pluck('group');
 
-        return response()->json($groups->flatMap(function (Group $group) use ($calculator, $userId): array {
-            return collect($calculator->suggestedTransfers($group))
-                ->filter(fn (array $transfer): bool => $transfer['from_user_id'] === $userId || $transfer['to_user_id'] === $userId)
-                ->map(fn (array $transfer): array => $transfer + ['group_id' => $group->id, 'group_name' => $group->name, 'currency' => $group->currency])
+        $transfers = $groups->groupBy('currency')->flatMap(function ($currencyGroups, string $currency) use ($calculator, $userId): array {
+            $balances = $currencyGroups->reduce(function (array $result, Group $group) use ($calculator): array {
+                foreach ($calculator->netBalances($group) as $memberId => $amount) {
+                    $result[$memberId] = ($result[$memberId] ?? 0) + $amount;
+                }
+
+                return $result;
+            }, []);
+
+            return collect($calculator->suggestedTransfersForBalances($balances))
+                ->filter(fn (array $transfer): bool => $transfer['from_user_id'] === $userId)
+                ->map(fn (array $transfer): array => $transfer + ['group_name' => 'Общий баланс', 'currency' => $currency])
                 ->values()
                 ->all();
-        })->values());
+        })->values();
+        $users = User::query()->whereIn('id', $transfers->pluck('to_user_id')->push($userId))->get(['id', 'name', 'email'])->keyBy('id');
+
+        return response()->json($transfers->map(fn (array $transfer): array => $transfer + ['from_user' => $users[$transfer['from_user_id']], 'to_user' => $users[$transfer['to_user_id']]]));
     }
 }

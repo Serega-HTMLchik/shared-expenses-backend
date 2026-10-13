@@ -27,7 +27,14 @@ class BalanceCalculator
     /** @return array<int, array{from_user_id:int,to_user_id:int,amount_cents:int}> */
     public function suggestedTransfers(Group $group): array
     {
-        $balances = $this->netBalances($group);
+        return $this->suggestedTransfersForBalances($this->netBalances($group));
+    }
+
+    /** @param array<int, int> $balances
+     * @return array<int, array{from_user_id:int,to_user_id:int,amount_cents:int}>
+     */
+    public function suggestedTransfersForBalances(array $balances): array
+    {
         $creditors = [];
         $debtors = [];
         foreach ($balances as $userId => $amount) {
