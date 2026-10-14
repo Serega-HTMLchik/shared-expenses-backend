@@ -14,6 +14,7 @@ WORKDIR /var/www/html
 
 COPY --from=vendor /app/vendor ./vendor
 COPY . ./
+COPY docker/php/uploads.ini /usr/local/etc/php/conf.d/uploads.ini
 
 RUN php artisan package:discover --ansi \
     && mkdir -p storage/app/public storage/framework/cache/data storage/framework/sessions storage/framework/views storage/logs

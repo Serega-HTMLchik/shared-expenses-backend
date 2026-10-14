@@ -49,7 +49,7 @@ docker compose down
    FRONTEND_URL=https://expenses.example.com
    API_PUBLIC_URL=https://api.expenses.example.com
    CORS_ALLOWED_ORIGINS=https://expenses.example.com
-   REVERB_ALLOWED_ORIGINS=https://expenses.example.com
+   REVERB_ALLOWED_ORIGINS=expenses.example.com
    VITE_REVERB_HOST=api.expenses.example.com
    VITE_REVERB_PORT=443
    VITE_REVERB_SCHEME=https
@@ -75,6 +75,7 @@ docker compose down
    server {
        listen 443 ssl http2;
        server_name api.expenses.example.com;
+       client_max_body_size 10m;
 
        location /app/ {
            proxy_pass http://127.0.0.1:8080;
@@ -94,6 +95,8 @@ docker compose down
        }
    }
    ```
+
+   `client_max_body_size` должен быть не меньше максимального размера чека. Laravel принимает чеки до 10 МБ; PHP-контейнер настроен с `upload_max_filesize=10M` и `post_max_size=12M`. После изменения конфигурации Nginx проверьте её (`nginx -t`) и перезагрузите (`systemctl reload nginx`).
 
 6. Настройте SMTP-параметры `MAIL_*`. При значении `MAIL_MAILER=log` письма не отправляются, а записываются в журналы контейнера.
 7. Запустите обновлённые контейнеры:
