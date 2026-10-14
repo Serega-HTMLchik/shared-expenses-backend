@@ -1,6 +1,6 @@
 # API «Совместные расходы»
 
-Laravel API для групповых расходов, расчётов, приглашений, уведомлений и напоминаний. В репозитории верхнего уровня подготовлен единый Docker Compose: он запускает это API вместе с PostgreSQL, обработчиком очереди, планировщиком, Laravel Reverb и React-клиентом.
+Laravel API для групповых расходов, расчётов, приглашений, уведомлений и напоминаний. Docker Compose запускает это API вместе с PostgreSQL, обработчиком очереди, планировщиком, Laravel Reverb и React-клиентом.
 
 ## Быстрый запуск в Docker
 
@@ -42,25 +42,67 @@ docker compose down
 1. Разместите рядом каталоги `shared-expenses-backend` и `shared-expenses-frontend` на сервере.
 2. В каталоге `shared-expenses-backend` скопируйте `docker-compose.env.example` в `.env`.
 3. Задайте уникальные `BACKEND_APP_KEY`, `POSTGRES_PASSWORD` и `REVERB_APP_SECRET`. Ключ приложения можно создать так: `docker compose run --rm api php artisan key:generate --show`.
-4. Укажите публичные HTTPS-адреса:
+4. Укажите разные публичные HTTPS-домены для интерфейса и API:
 
    ```dotenv
    FRONTEND_PUBLIC_URL=https://expenses.example.com
    FRONTEND_URL=https://expenses.example.com
-   APP_URL=https://expenses.example.com
+   API_PUBLIC_URL=https://api.expenses.example.com
+   CORS_ALLOWED_ORIGINS=https://expenses.example.com
+   REVERB_ALLOWED_ORIGINS=https://expenses.example.com
+   VITE_REVERB_HOST=api.expenses.example.com
    VITE_REVERB_PORT=443
    VITE_REVERB_SCHEME=https
    ```
 
-5. Настройте SMTP-параметры `MAIL_*`. При значении `MAIL_MAILER=log` письма не отправляются, а записываются в журналы контейнера.
-6. Разместите перед портом `FRONTEND_PORT` обратный прокси с TLS. Он должен передавать WebSocket-заголовки `Upgrade` и `Connection` для пути `/app/`.
+   После сборки клиент обращается к `https://api.expenses.example.com/api/v1`, а ссылки на чеки генерируются с API-доменом.
+
+5. На сервере не публикуйте контейнерные порты в интернет. В `.env` укажите `FRONTEND_PORT=127.0.0.1:5173`, `API_PORT=127.0.0.1:8000` и `REVERB_PORT=127.0.0.1:8080`, затем настройте TLS reverse proxy:
+
+   ```nginx
+   server {
+       listen 443 ssl http2;
+       server_name expenses.example.com;
+
+       location / {
+           proxy_pass http://127.0.0.1:5173;
+           proxy_set_header Host $host;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+
+   server {
+       listen 443 ssl http2;
+       server_name api.expenses.example.com;
+
+       location /app/ {
+           proxy_pass http://127.0.0.1:8080;
+           proxy_http_version 1.1;
+           proxy_set_header Upgrade $http_upgrade;
+           proxy_set_header Connection "upgrade";
+           proxy_set_header Host $host;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+
+       location / {
+           proxy_pass http://127.0.0.1:8000;
+           proxy_set_header Host $host;
+           proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+           proxy_set_header X-Forwarded-Proto $scheme;
+       }
+   }
+   ```
+
+6. Настройте SMTP-параметры `MAIL_*`. При значении `MAIL_MAILER=log` письма не отправляются, а записываются в журналы контейнера.
 7. Запустите обновлённые контейнеры:
 
    ```bash
    docker compose up -d --build
    ```
 
-Для публичного сервера не открывайте порты PostgreSQL и Reverb в интернет без необходимости: клиент подключается к WebSocket через публичный фронтенд по пути `/app/`.
+Публичный API включает OpenAPI-документацию по адресу `https://api.expenses.example.com/api/documentation`. WebSocket подключается к тому же API-домену по `/app/`.
 
 ## Запуск без Docker
 
